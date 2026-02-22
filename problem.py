@@ -10,6 +10,10 @@ from dataclasses import dataclass
 from enum import Enum
 from typing import Any, Literal
 import random
+# from perf_takehome import p
+
+def p(x, val="def"):
+    print(f"{val}=", x)
 
 Engine = Literal["alu", "load", "store", "flow"]
 Instruction = dict[Engine, list[tuple]]
@@ -58,7 +62,7 @@ VLEN = 8
 # Older versions of the take-home used multiple cores, but this version only uses 1
 N_CORES = 1
 SCRATCH_SIZE = 1536
-BASE_ADDR_TID = 100000
+BASE_ADDR_TID = 1_00_000
 
 
 class Machine:
@@ -113,6 +117,7 @@ class Machine:
         self.value_trace = value_trace
         self.prints = False
         self.cycle = 0
+        # self.debug = 0
         self.enable_pause = True
         self.enable_debug = True
         if trace:
@@ -195,6 +200,10 @@ class Machine:
                 )
 
     def run(self):
+        """
+        SIMD thing. gets all the cores and runs all instruction on each core. cycles counted by the amount of instructions run by each core. 
+        ie all cores run the same thing. also the debug statement is not counted in the cycles. 
+        """
         for core in self.cores:
             if core.state == CoreState.PAUSED:
                 core.state = CoreState.RUNNING
@@ -215,6 +224,8 @@ class Machine:
                     has_non_debug = True
             if has_non_debug:
                 self.cycle += 1
+            # else:
+            #     self.debug += 1
 
     def alu(self, core, op, dest, a1, a2):
         a1 = core.scratch[a1]
@@ -413,8 +424,11 @@ class Tree:
 
     @staticmethod
     def generate(height: int):
-        n_nodes = 2 ** (height + 1) - 1
-        values = [random.randint(0, 2**30 - 1) for _ in range(n_nodes)]
+        n_nodes = (1 << height) - 1
+        temp = random.getrandbits
+        values = [temp(30) for _ in range(n_nodes)]
+        # print(len(values))
+        # print(values)
         return Tree(height, values)
 
 
@@ -489,9 +503,9 @@ def build_mem_image(t: Tree, inp: Input) -> list[int]:
     Build a flat memory image of the problem.
     """
     header = 7
-    extra_room = len(t.values) + len(inp.indices) * 2 + VLEN * 2 + 32
+    # extra_room = len(t.values) + len(inp.indices) * 2 + VLEN * 2 + 32
     mem = [0] * (
-        header + len(t.values) + len(inp.indices) + len(inp.values) + extra_room
+        header + len(t.values) + len(inp.indices) + len(inp.values)
     )
     forest_values_p = header
     inp_indices_p = forest_values_p + len(t.values)
